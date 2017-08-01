@@ -1,0 +1,58 @@
+---
+
+    - yum: 
+        name: "{{ item }}" 
+        state: installed
+      with_items:
+      - pcsc-lite
+      - gnupg2-smime
+      become_user: root
+      become_method: sudo
+      become: yes
+
+    - fail: 
+        msg: "This role needs gpg_key_url set to a web-accessible URL" 
+      when: gpg_key_url is undefined
+
+    - get_url:
+        url: "{{ gpg_key_url }}"
+        dest: ~/.pubkey
+   
+    - command: gpg --import ~/.pubkey creates=~/.gnupg/pubring.gpg
+
+    - copy:
+        src: gpg-agent-wrapper
+        dest: ~/.gnupg/gpg-agent-wrapper
+        mode: 0700
+
+    - lineinfile:
+        dest: ~/.gnupg/scdaemon.conf
+        line: "allow-admin"
+        state: present
+        create: yes
+        mode: 0700
+
+    - lineinfile:
+        dest: ~/.gnupg/gpg.conf
+        line: "use-agent"
+        state: present
+        mode: 0700
+        
+    - lineinfile:
+        dest: ~/.gnupg/gpg-agent.conf
+        line: "enable-ssh-support"
+        state: present
+        create: yes
+        mode: 0700
+
+    - lineinfile:
+        dest: ~/.xsession
+        line: source ${HOME}/.gnupg/gpg-agent-wrapper
+        state: present
+        create: yes
+
+    - lineinfile:
+        dest: ~/.bashrc
+        line: source ${HOME}/.gnupg/gpg-agent-wrapper
+        state: present
+        create: yes
